@@ -1,0 +1,28 @@
+{
+  "name": "telegram-exel-notificator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon --config nodemon.json"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ansicolor": "^1.1.95",
+    "axios": "^0.24.0",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.2",
+    "node-fetch": "^3.1.0",
+    "node-telegram-bot-api": "^0.56.0",
+    "node-xlsx": "^0.21.0",
+    "pg": "^8.7.1",
+    "pg-hstore": "^2.3.4",
+    "pm2": "^5.1.2",
+    "puppeteer": "^13.0.1",
+    "sequelize": "^6.12.5"
+  }
+}
+
