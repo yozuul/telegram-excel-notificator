@@ -18,7 +18,8 @@ const importPath = path.resolve('./.imports')
 export class ExcelParser {
    prepareMessage(update) {
       let data = { update: false }
-      let message = []
+      let allMessage = []
+      let sortByName = {}
       for (let checkedCompany in update) {
          const companyTable = update[checkedCompany]
          if(companyTable.data.length > 0) {
@@ -28,27 +29,67 @@ export class ExcelParser {
             }
             for (let data of companyTable.data) {
                const customer = {
-                  name: data[1], summ: data[2], rp: data[4]
+                  name: data[1], summ: data[2], rp: data[4], type: data[5],company: checkedCompany
                }
-               company.data += `${customer.name} - ${this.formatCurrency(customer.summ)}`
+               if(!(customer.rp in sortByName)) sortByName[customer.rp] = []
+               if(customer.rp in sortByName) sortByName[customer.rp].push(customer)
+               company.data += `${customer.name} - <i>${this.formatCurrency(customer.summ)}</i>`
                if(customer.rp) {
-                  company.data += ` - ${customer.rp}\n`
+                  let rpField = customer.rp
+                  if(customer.type !== 'Консалтинг') rpField = customer.type
+                  company.data += ` - ${rpField}\n\n`
                } else {
                   company.data += `\n`
                }
                company.total += customer.summ
             }
             company.total = this.formatCurrency(company.total)
-            message.push(company)
+            allMessage.push(company)
             data.update = companyTable.date
          }
       }
-      if(message.length === 0) {
-         message =  `${cD.day - 1}.${cD.month + 1}.${cD.year}`
+      const currentDate = `${cD.day - 1}.${cD.month + 1}.${cD.year}`
+      if(allMessage.length === 0) {
+         allMessage =  currentDate
+         axios.post('http://localhost:3000/sendNotifyNoUpdate', {...data, text: allMessage})
+         return
       }
 
-      console.log(message)
-      axios.post('http://localhost:3000/sendNotify', {...data, text: message})
+      // console.log(allMessage)
+      axios.post('http://localhost:3000/sendNotifyAdmins', {...data, text: allMessage})
+      const messageByUser = {}
+      for (let user in sortByName) {
+         messageByUser[user] = []
+         let userData = this.prepareByName(sortByName[user])
+         messageByUser[user].push(userData)
+      }
+      axios.post('http://localhost:3000/sendNotifyByUser', {currentDate: currentDate, text: messageByUser})
+   }
+
+   prepareByName(userData) {
+      let allMessage = {}
+      const msgData = []
+      for (let customer of userData) {
+         if(!(customer.company in allMessage)) {
+            allMessage[customer.company] = {
+               data: '', total: 0
+            }
+         }
+         let rpField = customer.rp
+         if(customer.type !== 'Консалтинг') rpField = customer.type
+         allMessage[customer.company].data += `${customer.name} - <i>${this.formatCurrency(customer.summ)}</i> - ${rpField}\n\n`
+         allMessage[customer.company].total += customer.summ
+      }
+      for (let company in allMessage) {
+         const data = allMessage[company]
+         msgData.push({
+            name: company,
+            data: data.data,
+            total: this.formatCurrency(data.total)
+         })
+      }
+      console.log(msgData)
+      return msgData
    }
 
    formatCurrency(summ) {

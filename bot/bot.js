@@ -46,8 +46,10 @@ export const botStart = () => {
       const chat_id = query.message.chat.id
       const { message_id } = query.message
       if (callback.split('+7')[1]) {
+         const phoneNum = callback.split('/')[0]
+         console.log(phoneNum)
          try {
-            menu.deletePhone(chat_id, callback, message_id)
+            menu.deletePhone(chat_id, phoneNum, message_id)
          } catch (error) {
             console.log(error)
          }
@@ -65,7 +67,7 @@ export const botStart = () => {
          checkPhoneNumberFormat = '+' + contact.phone_number
       }
       const userContact = {
-         name: `${contact.first_name}`,
+         // name: `${contact.first_name}`,
          tg_id: `${contact.user_id}`,
          phone_num: `${checkPhoneNumberFormat}`
       }

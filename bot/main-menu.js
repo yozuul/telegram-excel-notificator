@@ -6,19 +6,9 @@ export class MainMenu {
       this.bot = bot
       this.user = {}
    }
-   async sendNotify(data, message) {
+   async sendNotifyNoUpdate(data, message) {
       const authUsers = await UserController.getAuthUsers()
-      if(!data.update) {
-         message = `Поступлений ${data.text} не было ☹`
-      } else {
-         message = `Поступления за ${data.update}\n`
-         let count = 1
-         for (let text of data.text) {
-            message += `<pre>${text.name}:</pre>\n${text.data}Итого, ${text.name}: ${text.total}`
-            if(data.text.length !== count) message += '\n-\n'
-            count++
-         }
-      }
+      message = `Поступлений ${data.text} не было ☹`
       for (let user of authUsers) {
          try {
             await this.bot.sendMessage(user.tg_id, message, { parse_mode: 'HTML' })
@@ -27,10 +17,50 @@ export class MainMenu {
          }
       }
    }
+   async sendNotifyAdmins(data) {
+      const adminsUsers = await UserController.getAdmins()
+      let message = `Поступления за ${data.update}\n\n`
+      let count = 1
+      for (let text of data.text) {
+         message += `<b>${text.name}:</b>\n${text.data}Итого, <b>${text.name}: ${text.total}</b>`
+         if(data.text.length !== count) message += '\n-\n'
+         count++
+      }
+      for (let user of adminsUsers) {
+         try {
+            await this.bot.sendMessage(user.tg_id, message, { parse_mode: 'HTML' })
+         } catch (error) {
+            console.log(error)
+         }
+      }
+   }
+
+   async sendNotifyByUser(data) {
+      const authUsers = await UserController.getAuthUsers()
+      const noUpdateText = `Поступлений ${data.currentDate} не было ☹`
+      for (let user of authUsers) {
+         try {
+            if(user.name in data.text) {
+               let message = `Поступления за ${data.currentDate}\n\n`
+               let count = 1
+               for (let text of data.text[user.name][0]) {
+                  message += `<b>${text.name}:</b>\n${text.data}Итого, <b>${text.name}: ${text.total}</b>`
+                  if(data.text.length !== count) message += '\n-\n'
+                  count++
+               }
+               await this.bot.sendMessage(user.tg_id, message, { parse_mode: 'HTML' })
+            } else {
+               await this.bot.sendMessage(user.tg_id, noUpdateText, { parse_mode: 'HTML' })
+            }
+         } catch (error) {
+            console.log(error)
+         }
+      }
+   }
 
    async addNewPhone(chat_id) {
       await this.checkInit(chat_id)
-      const title = 'Для удаления привязанного телефона, нажмите на соотвествующую кнопку с его номером.\nДля добавления нового, отправьте его номер в чат в формате: \n+7xxxxxxxxxx'
+      const title = 'Для удаления привязанного телефона, нажмите на соотвествующую кнопку с его номером.\nДля добавления нового, отправьте его номер в чат в формате: \n+7xxxxxxxxxx/Группа/Фамилия Имя'
       const users = await UserController.getAllUsers()
       this.existPhonesKeyboard(users)
       await this.bot.sendMessage(chat_id, title, {
@@ -53,17 +83,35 @@ export class MainMenu {
       })
    }
 
-   async checkAddNewPhone(chat_id, phoneNumber) {
+   // const user = await UserController.saveNewPhone(phoneNumber)
+   // await this.bot.sendMessage(chat_id, user.text)
+
+   async checkAddNewPhone(chat_id, userData) {
       await this.checkInit(chat_id)
-      const checkCorrectPhone = parseInt(phoneNumber)
       if(this.user[chat_id].currentPath === 'addNewPhone') {
-         if(checkCorrectPhone.toString().length === 11) {
-            const user = await UserController.saveNewPhone(phoneNumber)
-            await this.bot.sendMessage(chat_id, user.text)
-         } else {
+         const checkCorrectData = userData.split('/')
+         const user = {
+            phone: checkCorrectData[0],
+            group: checkCorrectData[1],
+            name: checkCorrectData[2],
+         }
+         const checkCorrectPhone = parseInt(user.phone)
+         console.log(checkCorrectPhone)
+         if(checkCorrectPhone.toString().length !== 11) {
             await this.bot.sendMessage(chat_id, 'Номер указан не верно')
             return
          }
+         if(!user.group) {
+            await this.bot.sendMessage(chat_id, 'Укажите группу')
+            return
+         }
+         if(!user.name) {
+            await this.bot.sendMessage(chat_id, 'Укажите Фамилию Имя')
+            return
+         }
+         console.log(user)
+         const saveData = await UserController.saveNewPhone(user)
+         await this.bot.sendMessage(chat_id, saveData.text)
       }
    }
    async checkNewUrl(chat_id, urlPath) {
@@ -135,11 +183,13 @@ export class MainMenu {
       const phonesKeyboard = []
       let keyboardRow = []
       for(let user of users) {
+         const userGroup = user.role_id === 2 ? 'Директор' : 'РП'
+         const btnText = `${user.phone_num}/${userGroup}/${user.name}`
          keyboardRow.push({
-            text: `${user.phone_num} ❌`,
-            callback_data: user.phone_num,
+            text: `${user.phone_num} / ${userGroup} / ${user.name} ❌`,
+            callback_data: btnText,
          })
-         if(keyboardRow.length === 2) {
+         if(keyboardRow.length === 1) {
             phonesKeyboard.push(keyboardRow)
             keyboardRow = []
          }

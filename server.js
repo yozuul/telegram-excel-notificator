@@ -12,8 +12,18 @@ const startServer = async () => {
    const app = express()
    try {
       app.use(express.json())
-      app.post('/sendNotify', (req, res, next) => {
-         botCommand.sendNotify(req.body)
+      app.post('/sendNotifyAdmins', (req, res, next) => {
+         botCommand.sendNotifyAdmins(req.body)
+         res.send('OK')
+         next()
+      })
+      app.post('/sendNotifyByUser', (req, res, next) => {
+         botCommand.sendNotifyByUser(req.body)
+         res.send('OK')
+         next()
+      })
+      app.post('/sendNotifyNoUpdate', (req, res, next) => {
+         botCommand.sendNotifyNoUpdate(req.body)
          res.send('OK')
          next()
       })
@@ -26,5 +36,5 @@ const startServer = async () => {
    }
 }
 
-// startServer()
-// new ExcelParser().checkUpdate()
+startServer()
+new ExcelParser().checkUpdate()
