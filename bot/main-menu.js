@@ -8,6 +8,7 @@ export class MainMenu {
    }
    async sendNotifyNoUpdate(data, message) {
       const authUsers = await UserController.getAuthUsers()
+      console.log(authUsers)
       message = `Поступлений ${data.text} не было ☹`
       for (let user of authUsers) {
          try {

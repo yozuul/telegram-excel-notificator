@@ -8,15 +8,18 @@ export class UserService {
    static async getAdmins() {
       return UserModel.findAll({
          where: {
-            [Op.and]: [{
-               tg_id: {
-                  [Op.ne]: null
+            [Op.and]: [
+               {
+                  tg_id: {
+                     [Op.ne]: null
+                  }
+               },
+               {
+                  role_id: {
+                     [Op.or]: [1, 2]
+                  }
                }
-            }, {
-               role_id: {
-                  [Op.or]: [1, 2]
-               }
-            }]
+            ]
          }
       })
    }
@@ -24,8 +27,12 @@ export class UserService {
       return UserModel.findAll({
          where: {
             [Op.and]: [
-               { tg_id: {[Op.ne]: null}},
-               { role_id: 3 }
+               { tg_id: {[Op.ne]: null }},
+               {
+                  role_id: {
+                     [Op.or]: [1, 2, 3]
+                  }
+               }
             ]
          }
       })
