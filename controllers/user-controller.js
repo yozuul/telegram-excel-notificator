@@ -15,6 +15,13 @@ export class UserController {
             console.log(err)
         }
     }
+    static async getAuthRPusers() {
+        try {
+            return UserService.getAuthRPusers()
+        } catch (err) {
+            console.log(err)
+        }
+    }
     static async getAdmins() {
         try {
             return UserService.getAdmins()

@@ -37,7 +37,7 @@ export class MainMenu {
    }
 
    async sendNotifyByUser(data) {
-      const authUsers = await UserController.getAuthUsers()
+      const authUsers = await UserController.getAuthRPusers()
       const noUpdateText = `Поступлений ${data.currentDate} не было ☹`
       for (let user of authUsers) {
          try {
