@@ -8,11 +8,16 @@ import xlsx from 'node-xlsx'
 import { SettingsController } from '../controllers'
 
 const date = new Date()
-const cD = {
+let cD = {
    year: date.getFullYear(),
    month: date.getMonth(),
    day: date.getDate()
 }
+let checkPrevMonth = false
+const prevMonthDay = new Date(date.getFullYear(), date.getMonth(), 0).getDate()
+if(cD.day === 1) checkPrevMonth = true
+let hasNewDatCipher = {}
+
 const importPath = path.resolve('./.imports')
 
 export class ExcelParser {
@@ -29,34 +34,40 @@ export class ExcelParser {
             }
             for (let data of companyTable.data) {
                const customer = {
-                  name: data[1], summ: data[2], rp: data[4], type: data[5],company: checkedCompany
+                  summ: data[1], cipher: data[4], name: data[6], rp: data[7], type: data[8],
+                  company: checkedCompany,
                }
-               if(!(customer.rp in sortByName)) sortByName[customer.rp] = []
-               if(customer.rp in sortByName) sortByName[customer.rp].push(customer)
-               company.data += `${customer.name} - <i>${this.formatCurrency(customer.summ)}</i>`
-               if(customer.rp) {
-                  let rpField = customer.rp
-                  if(customer.type !== 'Консалтинг') rpField = customer.type
-                  company.data += ` - ${rpField}\n\n`
-               } else {
-                  company.data += `\n`
+               if((data[4] === 'оплата') || data[4] === 'Оплата') {
+                  hasNewDatCipher[checkedCompany] = true
+                  if(!(customer.rp in sortByName)) sortByName[customer.rp] = []
+                  if(customer.rp in sortByName) sortByName[customer.rp].push(customer)
+                  company.data += `${customer.name} - <i>${this.formatCurrency(customer.summ)}</i>`
+                  if(customer.rp) {
+                     let rpField = customer.rp
+                     if(customer.type !== 'Консалтинг') rpField = customer.type
+                     company.data += ` - ${rpField}\n\n`
+                  } else {
+                     company.data += `\n`
+                  }
+                  company.total += customer.summ
                }
-               company.total += customer.summ
             }
-            company.total = this.formatCurrency(company.total)
-            allMessage.push(company)
-            data.update = companyTable.date
+            if(hasNewDatCipher[checkedCompany]) {
+               company.total = this.formatCurrency(company.total)
+               allMessage.push(company)
+               data.update = companyTable.date
+            }
          }
       }
-      const currentDate = `${cD.day - 1}.${cD.month + 1}.${cD.year}`
+      let currentDate = `${cD.day - 1}.${cD.month + 1}.${cD.year}`
+      if(checkPrevMonth) currentDate = `${prevMonthDay}.${cD.month}.${cD.year}`
       if(allMessage.length === 0) {
          allMessage =  currentDate
          axios.post('http://localhost:3000/sendNotifyNoUpdate', {...data, text: allMessage})
          return
       }
 
-      // console.log(allMessage)
-      axios.post('http://localhost:3000/sendNotifyAdmins', {...data, text: allMessage})
+      axios.post('http://localhost:3000/sendNotifyAdmins', {update: currentDate, text: allMessage})
       const messageByUser = {}
       for (let user in sortByName) {
          messageByUser[user] = []
@@ -88,7 +99,6 @@ export class ExcelParser {
             total: this.formatCurrency(data.total)
          })
       }
-      console.log(msgData)
       return msgData
    }
 
@@ -136,8 +146,17 @@ export class ExcelParser {
          month: tableDate.getMonth(),
          day: tableDate.getDate()
       }
+      if(checkPrevMonth) {
+         if((eD.year === cD.year) && (eD.month === cD.month - 1) && (prevMonthDay === eD.day)) {
+            return `${eD.day}.${eD.month}.${eD.year}`
+         } else {
+            return false
+         }
+      }
       if((eD.year === cD.year) && (eD.month === cD.month) && (eD.day + 1 === cD.day)) {
          return `${eD.day}.${eD.month + 1}.${eD.year}`
+      } else {
+         return false
       }
    }
 
@@ -167,7 +186,8 @@ export class ExcelParser {
 
    async downloadFile(url) {
       const browser = await puppeteer.launch({
-         // headless: true,
+         args: ['--no-sandbox'],
+         // headless: false,
          // args: ['--window-size=1920,1020']
       })
       try {
@@ -191,6 +211,7 @@ export class ExcelParser {
             return '❌ По указанному URL таблиц не найдено'
          } else {
             const fileName = decodedUrl.split('/').pop()
+            console.log(fileName)
             await SettingsController.updateFileUrl(urlToCheck, fileName)
             return `✅\n<pre>Путь к файлу</pre>${fileName}<pre>успешно обновлён</pre>`
          }

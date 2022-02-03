@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "start": "node runner.js",
     "dev": "nodemon --config nodemon.json"
   },
   "keywords": [],

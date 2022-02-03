@@ -1,3 +1,8 @@
+import { readFileSync } from 'fs'
+import { writeFile } from 'fs/promises'
+import { Buffer } from 'buffer'
+import { exec } from 'child_process'
+
 import { UserController, SettingsController } from '../controllers'
 import { ExcelParser } from '../utils/excel-parser'
 
@@ -6,9 +11,34 @@ export class MainMenu {
       this.bot = bot
       this.user = {}
    }
+
+   async changeCurrentCronTimer(chat_id, timer) {
+      if (this.user[chat_id].currentPath === 'changeCronTimer') {
+         try {
+            const data = new Uint8Array(Buffer.from(timer))
+            await writeFile('./config/cron-restart.config', data)
+            exec(`pm2 restart excel-parser --cron-restart="${timer}"`)
+         } catch (err) {
+            console.log('Ошибка записи нового таймера')
+            console.error(err)
+         }
+      }
+   }
+
+   async getCurrentCronTimer(chat_id) {
+      await this.checkInit(chat_id)
+      const timer = readFileSync('./config/cron-restart.config', 'utf8')
+      const title = `Изменение расписания проверки обновлений\nТекущий таймер: <pre>${timer}</pre>Примеры:<pre>30 12 * * 1-5</pre>Пн-Пт в 12:30<pre>*/1 * * * *</pre>Каждую минуту`
+      try {
+         await this.bot.sendMessage(chat_id, title, { parse_mode: 'HTML' })
+      } catch (error) {
+         console.log(error)
+      }
+      this.user[chat_id].currentPath = 'changeCronTimer'
+   }
+
    async sendNotifyNoUpdate(data, message) {
       const authUsers = await UserController.getAuthUsers()
-      console.log(authUsers)
       message = `Поступлений ${data.text} не было ☹`
       for (let user of authUsers) {
          try {
@@ -18,6 +48,7 @@ export class MainMenu {
          }
       }
    }
+
    async sendNotifyAdmins(data) {
       const adminsUsers = await UserController.getAdmins()
       let message = `Поступления за ${data.update}\n\n`
@@ -84,9 +115,6 @@ export class MainMenu {
       })
    }
 
-   // const user = await UserController.saveNewPhone(phoneNumber)
-   // await this.bot.sendMessage(chat_id, user.text)
-
    async checkAddNewPhone(chat_id, userData) {
       await this.checkInit(chat_id)
       if(this.user[chat_id].currentPath === 'addNewPhone') {
@@ -97,7 +125,6 @@ export class MainMenu {
             name: checkCorrectData[2],
          }
          const checkCorrectPhone = parseInt(user.phone)
-         console.log(checkCorrectPhone)
          if(checkCorrectPhone.toString().length !== 11) {
             await this.bot.sendMessage(chat_id, 'Номер указан не верно')
             return
@@ -110,7 +137,6 @@ export class MainMenu {
             await this.bot.sendMessage(chat_id, 'Укажите Фамилию Имя')
             return
          }
-         console.log(user)
          const saveData = await UserController.saveNewPhone(user)
          await this.bot.sendMessage(chat_id, saveData.text)
       }
@@ -125,12 +151,12 @@ export class MainMenu {
 
    async changeTableUrl(chat_id) {
       const settings = await SettingsController.getSettings()
-      console.log(settings.file_name)
       const title = `<pre>Текущий URL ссылается на файл:</pre>${settings.file_name}<pre>Для изменения текущего файла, отправьте новый URL в чат:</pre>`
-      const msg = await this.bot.sendMessage(chat_id, title, { parse_mode: 'HTML' })
+      await this.bot.sendMessage(chat_id, title, { parse_mode: 'HTML' })
       await this.checkInit(chat_id)
       this.user[chat_id].currentPath = 'changeTableUrl'
    }
+
    async adminMenu(chat_id) {
       if(!this.user[chat_id]) {
          this.initNavigation(chat_id)
@@ -173,7 +199,10 @@ export class MainMenu {
    async startedAdminKeyboard(chat_id) {
       this.bot.sendMessage(chat_id, '<pre>ВЫ ВОШЛИ КАК АДМИНИСТРАТОР</pre>', {
          reply_markup: {
-            keyboard: [['🔗 Изменить URL файла', '📞 Добавить номер']],
+            keyboard: [
+               ['🔗 Изменить URL файла', '📞 Добавить номер'],
+               ['⏰ Изменить расписание', '📃 Выполнить рассылку'],
+            ],
             resize_keyboard: true
          },
          parse_mode: 'HTML'

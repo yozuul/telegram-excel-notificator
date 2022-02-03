@@ -3,6 +3,7 @@ import { darkGray, red, green } from 'ansicolor'
 
 import { UserController } from '../controllers'
 import { MainMenu } from './main-menu'
+import { ExcelParser } from '../utils/excel-parser'
 
 const bot = new TelegramApi(process.env.BOT_TOKEN, { polling: true })
 const menu = new MainMenu(bot)
@@ -12,7 +13,6 @@ export const botStart = () => {
    bot.on('message', async (msg) => {
       const text = msg.text || 'default'
       const chat_id = msg.chat.id
-      // console.log(chat_id)
       const checkAuth = await UserController.findByTgId(chat_id)
       if(!checkAuth) {
          menu.unAuthorizedUser(chat_id)
@@ -31,15 +31,23 @@ export const botStart = () => {
             menu.addNewPhone(chat_id)
             return
          }
+         if(text === '⏰ Изменить расписание') {
+            menu.getCurrentCronTimer(chat_id)
+            return
+         }
+         if(text === '📃 Выполнить рассылку') {
+            new ExcelParser().checkUpdate()
+            return
+         }
          if (text.split('+7')[1]) {
             await menu.checkAddNewPhone(chat_id, text)
          }
          menu.checkNewUrl(chat_id, text)
          menu.adminMenu(chat_id)
+         menu.changeCurrentCronTimer(chat_id, text)
       }
       console.log(('message:').darkGray, (text).green)
    })
-   //
    // Колбеки
    bot.on('callback_query', async (query) => {
       const callback = query.data
@@ -56,7 +64,6 @@ export const botStart = () => {
       }
       console.log(('callback:').darkGray, (callback).green)
    })
-
    // Контакты
    bot.on('contact', async (msg) => {
       const chat_id = msg.chat.id
@@ -74,10 +81,7 @@ export const botStart = () => {
       if(contact.last_name) {
          userContact.name += contact.last_name
       }
-      // console.log(userContact)
       const isUserExist = await UserController.findByPhone(userContact.phone_num)
-      // console.log(isUserExist)
-      // console.log(userContact)
       if(isUserExist) {
          await UserController.confirmPhone(userContact)
          await menu.authorizedUser(chat_id)

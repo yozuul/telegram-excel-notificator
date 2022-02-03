@@ -36,5 +36,9 @@ const startServer = async () => {
    }
 }
 
-startServer()
-new ExcelParser().checkUpdate()
+try {
+   await startServer()
+   await new ExcelParser().checkUpdate()
+} catch (error) {
+   console.log(error)
+}
