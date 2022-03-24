@@ -214,10 +214,9 @@ export class MainMenu {
       let keyboardRow = []
       for(let user of users) {
          const userGroup = user.role_id === 2 ? 'Директор' : 'РП'
-         const btnText = `${user.phone_num}/${userGroup}/${user.name}`
          keyboardRow.push({
             text: `${user.phone_num} / ${userGroup} / ${user.name} ❌`,
-            callback_data: btnText,
+            callback_data: user.phone_num,
          })
          if(keyboardRow.length === 1) {
             phonesKeyboard.push(keyboardRow)
