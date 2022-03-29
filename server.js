@@ -6,9 +6,9 @@ import { botStart } from './bot'
 import { ExcelParser } from './utils/excel-parser'
 
 const PORT = process.env.API_PORT
-const botCommand = await botStart()
 
 const startServer = async () => {
+   const botCommand = await botStart()
    const app = express()
    try {
       app.use(express.json())
